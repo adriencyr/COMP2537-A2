@@ -2,7 +2,38 @@ const path = require("path");
 const express = require("express");
 const bcrypt = require("bcrypt");
 const joi = require("joi");
+const { MongoClient } = require("mongodb");
+const dns = require("dns");
 
+dns.setDefaultResultOrder("ipv4first");
+
+require("dotenv").config();
+
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+// MongoDB setup
+const mongoUrl = process.env.MONGODB_URI;
+
+const client = new MongoClient(mongoUrl);
+
+let userCollection;
+
+async function connectToDatabase() {
+    try {
+        await client.connect();
+
+        const db = client.db(process.env.MONGODB_DATABASE);
+        userCollection = db.collection("users");
+
+        console.log("Connected to MongoDB");
+    } catch (err) {
+        console.error("MongoDB connection error:", err);
+        process.exit(1);
+    }
+}
+
+// Joi validation
 const signupSchema = joi.object({
     name: joi.string()
         .trim()
@@ -36,15 +67,10 @@ const signupSchema = joi.object({
         })
 });
 
-const app = express();
-const PORT = 3000;
-
 // Helper functions
 async function hashPassword(plainPassword) {
     const saltRounds = 10;
-    const hashedPassword = await bcrypt.hash(plainPassword, saltRounds);
-
-    return hashedPassword;
+    return await bcrypt.hash(plainPassword, saltRounds);
 }
 
 // Main Logic
@@ -52,12 +78,12 @@ app.use(express.static(__dirname));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-app.get('/', (res, req) => {
-    req.sendFile(path.join(__dirname, "index.html"))
+app.get("/", (req, res) => {
+    res.sendFile(path.join(__dirname, "index.html"));
 });
 
-app.get('/signup', (res, req) => {
-    req.sendFile(path.join(__dirname, "signup.html"))
+app.get("/signup", (req, res) => {
+    res.sendFile(path.join(__dirname, "signup.html"));
 });
 
 app.post("/signupSubmit", async (req, res) => {
@@ -67,7 +93,9 @@ app.post("/signupSubmit", async (req, res) => {
     });
 
     if (error) {
-        const errorMessages = error.details.map(detail => `<li>${detail.message}</li>`).join("");
+        const errorMessages = error.details
+            .map(detail => `<li>${detail.message}</li>`)
+            .join("");
 
         return res.status(400).send(`
             <p>Signup failed:</p>
@@ -78,15 +106,46 @@ app.post("/signupSubmit", async (req, res) => {
 
     const { name, email, password } = value;
 
-    const hashedPassword = await bcrypt.hash(password, 10);
+    try {
+        const existingUser = await userCollection.findOne({ email: email });
 
-    console.log("Username:", name);
-    console.log("Email:", email);
-    console.log("Hashed password:", hashedPassword);
+        if (existingUser) {
+            return res.status(400).send(`
+                <p>An account with this email already exists.</p>
+                <p>Please <a href="/signup">try again.</a></p>
+            `);
+        }
 
-    res.redirect("/");
+        const hashedPassword = await hashPassword(password);
+
+        await userCollection.insertOne({
+            name: name,
+            email: email,
+            password: hashedPassword
+        });
+
+        res.redirect("/");
+    } catch (err) {
+        console.error("Signup error:", err);
+
+        res.status(500).send(`
+            <p>Something went wrong while creating your account.</p>
+            <p>Please <a href="/signup">try again.</a></p>
+        `);
+    }
 });
 
-app.listen(PORT, () => {
-    console.log(`Server is live: http://localhost:${PORT}/`)
+app.use((req, res) => {
+    res.status(404).send(`
+        <h1>404</h1>
+        <p>Page not found.</p>
+        <p><a href="/">Return home</a></p>
+    `);
+});
+
+// Database Connection
+connectToDatabase().then(() => {
+    app.listen(PORT, () => {
+        console.log(`Server is live: http://localhost:${PORT}/`);
+    });
 });

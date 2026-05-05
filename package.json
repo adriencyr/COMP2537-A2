@@ -17,6 +17,7 @@
     "express-session": "^1.19.0"
   },
   "dependencies": {
+    "dotenv": "^17.4.2",
     "joi": "^18.1.2"
   }
 }
