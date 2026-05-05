@@ -1,11 +1,12 @@
 const path = require("path");
+const fs = require("fs");
 const express = require("express");
+const ejs = require("ejs");
 const bcrypt = require("bcrypt");
 const joi = require("joi");
 const { MongoClient } = require("mongodb");
-const dns = require("dns");
-
-dns.setDefaultResultOrder("ipv4first");
+const session = require("express-session");
+const MongoStore = require("connect-mongo").default;
 
 require("dotenv").config();
 
@@ -74,11 +75,36 @@ async function hashPassword(plainPassword) {
 }
 
 // Main Logic
-app.use(express.static(__dirname));
+app.use(express.static(path.join(__dirname, "public"), {
+    index: false
+}));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.set('view engine', 'ejs')
+
+// Session setup
+app.use(session({
+    secret: process.env.NODE_SESSION_SECRET,
+    resave: false,
+    saveUninitialized: false,
+    store: MongoStore.create({
+        mongoUrl: process.env.MONGODB_URI,
+        collectionName: "sessions",
+        crypto: {
+            secret: process.env.MONGODB_SESSION_SECRET
+        }
+    }),
+    cookie: {
+        maxAge: 60 * 60 * 1000 // 1 hour
+    }
+}));
 
 app.get("/", (req, res) => {
+    if (req.session.authenticated) {
+        res.redirect("/members");
+        return;
+    }
+
     res.sendFile(path.join(__dirname, "index.html"));
 });
 
@@ -124,7 +150,11 @@ app.post("/signupSubmit", async (req, res) => {
             password: hashedPassword
         });
 
-        res.redirect("/");
+        req.session.authenticated = true;
+        req.session.name = name;
+        req.session.email = email;
+
+        res.redirect("/members");
     } catch (err) {
         console.error("Signup error:", err);
 
@@ -133,6 +163,46 @@ app.post("/signupSubmit", async (req, res) => {
             <p>Please <a href="/signup">try again.</a></p>
         `);
     }
+});
+
+app.get("/members", (req, res) => {
+    if (!req.session.authenticated) {
+        return res.redirect("/");
+    }
+
+    const imagesFolder = path.join(__dirname, "public", "images");
+
+    fs.readdir(imagesFolder, (err, files) => {
+        if (err) {
+            console.error("Image folder error:", err);
+            return res.status(500).send("Could not load images.");
+        }
+
+        const imageList = files.filter(file => /\.(jpg|jpeg|png|gif)$/i.test(file));
+
+        if (imageList.length === 0) {
+            return res.status(500).send("No images found.");
+        }
+
+        const randomIndex = Math.floor(Math.random() * imageList.length);
+        const selectedImage = imageList[randomIndex];
+
+        res.render("members", {
+            name: req.session.name,
+            selectedImage: selectedImage
+        });
+    });
+});
+
+app.get("/logout", (req, res) => {
+    req.session.destroy((err) => {
+        if (err) {
+            console.error("Logout error:", err);
+            return res.status(500).send("Could not log out.");
+        }
+
+        res.redirect("/");
+    });
 });
 
 app.use((req, res) => {
