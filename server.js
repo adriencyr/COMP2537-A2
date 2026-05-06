@@ -55,17 +55,44 @@ const signupSchema = joi.object({
         .messages({
             "string.empty": "Email is required",
             "string.email": "Email must be valid",
+            "string.max": "Email cannot be more than 254 characters",
             "any.required": "Email is required"
         }),
 
     password: joi.string()
         .min(8)
-        .max(72)
+        .max(24)
         .required()
         .messages({
             "string.empty": "Password is required",
             "string.min": "Password must be at least 8 characters",
-            "string.max": "Password cannot be more than 72 characters",
+            "string.max": "Password cannot be more than 24 characters",
+            "any.required": "Password is required"
+        })
+});
+
+const loginSchema = joi.object({
+    email: joi.string()
+        .trim()
+        .lowercase()
+        .email()
+        .max(254)
+        .required()
+        .messages({
+            "string.empty": "Email is required",
+            "string.email": "Email must be valid",
+            "string.max": "Email cannot be more than 254 characters",
+            "any.required": "Email is required"
+        }),
+
+    password: joi.string()
+        .min(8)
+        .max(24)
+        .required()
+        .messages({
+            "string.empty": "Password is required",
+            "string.min": "Password must be at least 8 characters",
+            "string.max": "Password cannot be more than 24 characters",
             "any.required": "Password is required"
         })
 });
@@ -111,10 +138,28 @@ app.get("/", (req, res) => {
 });
 
 app.get("/signup", (req, res) => {
+    if (req.session.authenticated) {
+        res.redirect("/members");
+        return;
+    }
+
     res.sendFile(path.join(__dirname, "signup.html"));
 });
 
+app.get("/login", (req, res) => {
+    if (req.session.authenticated) {
+        res.redirect("/members");
+        return;
+    }
+
+    res.sendFile(path.join(__dirname, "login.html"));
+});
+
 app.post("/signupSubmit", async (req, res) => {
+    if (req.session.authenticated) {
+        return res.redirect("/members");
+    }
+    
     const { error, value } = signupSchema.validate(req.body, {
         abortEarly: false,
         stripUnknown: true
@@ -163,6 +208,71 @@ app.post("/signupSubmit", async (req, res) => {
         res.status(500).send(`
             <p>Something went wrong while creating your account.</p>
             <p>Please <a href="/signup">try again.</a></p>
+        `);
+    }
+});
+
+app.post("/loginSubmit", async (req, res) => {
+    if (req.session.authenticated) {
+        return res.redirect("/members");
+    }
+
+    const { error, value } = loginSchema.validate(req.body, {
+        abortEarly: false,
+        stripUnknown: true
+    });
+
+    if (error) {
+        const errorMessages = error.details
+            .map(detail => `<li>${detail.message}</li>`)
+            .join("");
+
+        return res.status(400).send(`
+            <p>Login failed:</p>
+            <ul>${errorMessages}</ul>
+            <p>Please <a href="/login">try again.</a></p>
+        `);
+    }
+
+    const { email, password } = value;
+
+    try {
+        const existingUser = await userCollection.findOne({ email: email });
+
+        if (!existingUser) {
+            return res.status(400).send(`
+                <p>Invalid email or password.</p>
+                <p>Please <a href="/login">try again.</a></p>
+            `);
+        }
+
+        const passwordMatches = await bcrypt.compare(password, existingUser.password);
+
+        if (!passwordMatches) {
+            return res.status(400).send(`
+                <p>Invalid email or password.</p>
+                <p>Please <a href="/login">try again.</a></p>
+            `);
+        }
+
+        req.session.authenticated = true;
+        req.session.name = existingUser.name;
+        req.session.email = existingUser.email;
+
+        req.session.save((err) => {
+            if (err) {
+                console.error("Session save error:", err);
+                return res.status(500).send("Could not save session.");
+            }
+
+            res.redirect("/members");
+        });
+    } catch (err) {
+        console.error("Login error:", err);
+
+        res.status(500).send(`
+            <p>Something went wrong while logging in to your account.</p>
+            <p>Please <a href="/login">try again.</a></p>
         `);
     }
 });
