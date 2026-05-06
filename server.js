@@ -38,6 +38,7 @@ async function connectToDatabase() {
 const signupSchema = joi.object({
     name: joi.string()
         .trim()
+        .alphanum()
         .min(1)
         .max(30)
         .required()
@@ -49,6 +50,7 @@ const signupSchema = joi.object({
     email: joi.string()
         .trim()
         .email()
+        .max(254)
         .required()
         .messages({
             "string.empty": "Email is required",
