@@ -159,7 +159,7 @@ app.post("/signupSubmit", async (req, res) => {
     if (req.session.authenticated) {
         return res.redirect("/members");
     }
-    
+
     const { error, value } = signupSchema.validate(req.body, {
         abortEarly: false,
         stripUnknown: true
@@ -282,7 +282,7 @@ app.get("/members", (req, res) => {
         return res.redirect("/");
     }
 
-    const imagesFolder = path.join(__dirname, "public", "images");
+    const imagesFolder = path.join(__dirname, "public");
 
     fs.readdir(imagesFolder, (err, files) => {
         if (err) {
