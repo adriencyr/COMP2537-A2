@@ -134,7 +134,7 @@ app.get("/", (req, res) => {
         return;
     }
 
-    res.sendFile(path.join(__dirname, "index.html"));
+    res.render('index');
 });
 
 app.get("/signup", (req, res) => {
@@ -143,7 +143,7 @@ app.get("/signup", (req, res) => {
         return;
     }
 
-    res.sendFile(path.join(__dirname, "signup.html"));
+    res.render('signup');
 });
 
 app.get("/login", (req, res) => {
@@ -152,7 +152,7 @@ app.get("/login", (req, res) => {
         return;
     }
 
-    res.sendFile(path.join(__dirname, "login.html"));
+    res.render('login')
 });
 
 app.post("/signupSubmit", async (req, res) => {
