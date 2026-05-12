@@ -1,15 +1,19 @@
-<!DOCTYPE html>
-<html>
-    <head>
-        <title>hi</title>
-    </head>
+<%- include("templates/header", { title: "Login" }) %>
 
-    <body>
+<div class="d-flex justify-content-center">
+    <div>
         <form action="/loginSubmit" method="POST">
             <label>log in</label><br>
             <input type="email" name="email" placeholder="email"><br>
             <input type="password" name="password" placeholder="password"><br>
             <input type="submit">
         </form>
-    </body>
-</html>
+
+        <p class="mt-3">
+            Don't have an account?
+            <a href="/signup">Sign up</a>
+        </p>
+    </div>
+</div>
+
+<%- include("templates/footer") %>

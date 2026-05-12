@@ -1,12 +1,10 @@
-<!DOCTYPE html>
-<html>
-    <head>
-        <title>hi</title>
-    </head>
+<%- include("templates/header", { title: "Home" }) %>
 
-    <body>
-        <input type="button" onclick="window.location.href='/signup'" id="btn-signup" value="Sign up">
-        <input type="button" onclick="window.location.href='/login'" id="btn-login" value="Log in">
-    </body>
+<div class="text-center">
+    <h1 class="mb-4">Welcome</h1>
 
-</html>
+    <a href="/signup" class="btn btn-primary me-2">Sign up</a>
+    <a href="/login" class="btn btn-secondary">Log in</a>
+</div>
+
+<%- include("templates/footer") %>

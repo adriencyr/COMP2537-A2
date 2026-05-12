@@ -128,31 +128,41 @@ app.use(session({
     }
 }));
 
+app.use((req, res, next) => {
+    res.locals.authenticated = req.session.authenticated;
+    res.locals.name = req.session.name;
+    res.locals.user_type = req.session.user_type || "user";
+    next();
+});
+
 app.get("/", (req, res) => {
     if (req.session.authenticated) {
-        res.redirect("/members");
-        return;
+        return res.redirect("/members");
     }
 
-    res.render('index');
+    res.render("index", {
+        title: "Home"
+    });
 });
 
 app.get("/signup", (req, res) => {
     if (req.session.authenticated) {
-        res.redirect("/members");
-        return;
+        return res.redirect("/members");
     }
 
-    res.render('signup');
+    res.render("signup", {
+        title: "Sign Up"
+    });
 });
 
 app.get("/login", (req, res) => {
     if (req.session.authenticated) {
-        res.redirect("/members");
-        return;
+        return res.redirect("/members");
     }
 
-    res.render('login')
+    res.render("login", {
+        title: "Login"
+    });
 });
 
 app.post("/signupSubmit", async (req, res) => {
@@ -284,27 +294,15 @@ app.get("/members", (req, res) => {
         return res.redirect("/");
     }
 
-    const imagesFolder = path.join(__dirname, "public");
+    const images = [
+        "/1.jpg",
+        "/2.jpg",
+        "/3.jpg"
+    ];
 
-    fs.readdir(imagesFolder, (err, files) => {
-        if (err) {
-            console.error("Image folder error:", err);
-            return res.status(500).send("Could not load images.");
-        }
-
-        const imageList = files.filter(file => /\.(jpg|jpeg|png|gif)$/i.test(file));
-
-        if (imageList.length === 0) {
-            return res.status(500).send("No images found.");
-        }
-
-        const randomIndex = Math.floor(Math.random() * imageList.length);
-        const selectedImage = imageList[randomIndex];
-
-        res.render("members", {
-            name: req.session.name,
-            selectedImage: selectedImage
-        });
+    res.render("members", {
+        title: "Members",
+        images: images
     });
 });
 
@@ -324,6 +322,7 @@ app.get("/admin", async (req, res) => {
     const users = await userCollection.find().toArray();
 
     res.render("admin", {
+        title: "Admin",
         users: users
     })
 });
@@ -394,11 +393,9 @@ app.get("/logout", (req, res) => {
 });
 
 app.use((req, res) => {
-    res.status(404).send(`
-        <h1>404</h1>
-        <p>Page not found.</p>
-        <p><a href="/">Return home</a></p>
-    `);
+    res.status(404).render("404", {
+        title: "404"
+    });
 });
 
 // Database Connection

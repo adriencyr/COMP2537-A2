@@ -13,27 +13,13 @@
                     <th>Name</th>
                     <th>Email</th>
                     <th>User Type</th>
+                    <th>Actions</th>
                 </tr>
             </thead>
 
             <tbody>
                 <% for (const user of users) { %>
-                    <tr>
-                        <td><%= user.name %></td>
-                        <td><%= user.email %></td>
-                        <td><%= user.user_type || "user" %></td>
-                        <td>
-                            <% if (user.user_type === "admin") { %>
-                                <a href="/modifyMember/<%= user._id %>">
-                                    Demote to User
-                                </a>
-                            <% } else { %>
-                                <a href="/modifyMember/<%= user._id %>">
-                                    Promote to Admin
-                                </a>
-                            <% } %>
-                        </td>
-                    </tr>
+                    <%- include("templates/user", { user: user }) %>
                 <% } %>
             </tbody>
         </table>

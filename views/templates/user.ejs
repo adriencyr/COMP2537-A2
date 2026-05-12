@@ -1,0 +1,16 @@
+<tr>
+    <td><%= user.name %></td>
+    <td><%= user.email %></td>
+    <td><%= user.user_type || "user" %></td>
+    <td>
+        <% if ((user.user_type || "user") === "admin") { %>
+            <a href="/modifyMember/<%= user._id %>">
+                Demote to User
+            </a>
+        <% } else { %>
+            <a href="/modifyMember/<%= user._id %>">
+                Promote to Admin
+            </a>
+        <% } %>
+    </td>
+</tr>
