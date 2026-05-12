@@ -1,12 +1,25 @@
-<%- include("templates/header", { title: "Login" }) %>
+<%- include("templates/header") %>
 
 <div class="d-flex justify-content-center">
     <div>
         <form action="/loginSubmit" method="POST">
-            <label>log in</label><br>
-            <input type="email" name="email" placeholder="email"><br>
-            <input type="password" name="password" placeholder="password"><br>
-            <input type="submit">
+            <label class="form-label">log in</label><br>
+
+            <input 
+                type="email" 
+                name="email" 
+                placeholder="email" 
+                class="form-control mb-2"
+            >
+
+            <input 
+                type="password" 
+                name="password" 
+                placeholder="password" 
+                class="form-control mb-2"
+            >
+
+            <input type="submit" class="btn btn-primary" value="Log in">
         </form>
 
         <p class="mt-3">

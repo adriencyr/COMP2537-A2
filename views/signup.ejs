@@ -1,13 +1,32 @@
-<%- include("templates/header", { title: "Sign Up" }) %>
+<%- include("templates/header") %>
 
 <div class="d-flex justify-content-center">
     <div>
         <form action="/signupSubmit" method="POST">
-            <label>create user</label><br>
-            <input type="text" name="name" placeholder="name"><br>
-            <input type="email" name="email" placeholder="email"><br>
-            <input type="password" name="password" placeholder="password"><br>
-            <input type="submit">
+            <label class="form-label">create user</label><br>
+
+            <input 
+                type="text" 
+                name="name" 
+                placeholder="name" 
+                class="form-control mb-2"
+            >
+
+            <input 
+                type="email" 
+                name="email" 
+                placeholder="email" 
+                class="form-control mb-2"
+            >
+
+            <input 
+                type="password" 
+                name="password" 
+                placeholder="password" 
+                class="form-control mb-2"
+            >
+
+            <input type="submit" class="btn btn-primary" value="Sign up">
         </form>
 
         <p class="mt-3">
