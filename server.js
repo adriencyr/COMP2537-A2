@@ -4,7 +4,7 @@ const express = require("express");
 const ejs = require("ejs");
 const bcrypt = require("bcrypt");
 const joi = require("joi");
-const { MongoClient } = require("mongodb");
+const { MongoClient, ObjectId } = require("mongodb");
 const session = require("express-session");
 const MongoStore = require("connect-mongo").default;
 
@@ -194,7 +194,8 @@ app.post("/signupSubmit", async (req, res) => {
         await userCollection.insertOne({
             name: name,
             email: email,
-            password: hashedPassword
+            password: hashedPassword,
+            user_type: 'user',
         });
 
         req.session.authenticated = true;
@@ -258,6 +259,7 @@ app.post("/loginSubmit", async (req, res) => {
         req.session.authenticated = true;
         req.session.name = existingUser.name;
         req.session.email = existingUser.email;
+        req.session.user_type = existingUser.user_type || 'user';
 
         req.session.save((err) => {
             if (err) {
@@ -304,6 +306,80 @@ app.get("/members", (req, res) => {
             selectedImage: selectedImage
         });
     });
+});
+
+app.get("/admin", async (req, res) => {
+    if (!req.session.authenticated) {
+        return res.redirect("/");
+    }
+
+    if (req.session.user_type !== 'admin') {
+        return res.status(403).send(`
+            <h1>403</h1>
+            <p>You do not have permission to access this page.</p>
+            <p><a href="/">Return home</a></p>
+        `);
+    }
+
+    const users = await userCollection.find().toArray();
+
+    res.render("admin", {
+        users: users
+    })
+});
+
+app.get("/modifyMember/:userid", async (req, res) => {
+    if (!req.session.authenticated) {
+        return res.redirect("/");
+    }
+
+    if (req.session.user_type !== 'admin') {
+        return res.status(403).send(`
+            <h1>403</h1>
+            <p>You do not have permission to access this page.</p>
+            <p><a href="/">Return home</a></p>
+        `);
+    }
+
+    const id = req.params.userid;
+
+    if (!ObjectId.isValid(id)) {
+        return res.status(400).send(`
+            <h1>400</h1>
+            <p>Invalid user ID.</p>
+            <p><a href="/admin">Return</a></p>
+        `);
+    }
+
+    const targetUser = await userCollection.findOne({
+        _id: new ObjectId(id)
+    });
+
+    if (!targetUser) {
+        return res.status(404).send(`
+            <h1>404</h1>
+            <p>No user by this ID.</p>
+            <p><a href="/admin">Return</a></p>
+        `);
+    }
+
+    if (req.session.email === targetUser.email) {
+        return res.status(403).send(`
+            <h1>403</h1>
+            <p>You cannot action yourself.</p>
+            <p><a href="/admin">Return</a></p>
+        `);
+    }
+
+    const currentType = targetUser.user_type || "user";
+    const newType = currentType === "admin" ? "user" : "admin";
+
+    await userCollection.updateOne(
+        { _id: new ObjectId(id) },
+        { $set: { user_type: newType } }
+    );
+
+    res.redirect("/admin");
 });
 
 app.get("/logout", (req, res) => {

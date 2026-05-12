@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Admin Page</title>
+    </head>
+
+    <body>
+        <h1>Admin</h1>
+
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>User Type</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                <% for (const user of users) { %>
+                    <tr>
+                        <td><%= user.name %></td>
+                        <td><%= user.email %></td>
+                        <td><%= user.user_type || "user" %></td>
+                        <td>
+                            <% if (user.user_type === "admin") { %>
+                                <a href="/modifyMember/<%= user._id %>">
+                                    Demote to User
+                                </a>
+                            <% } else { %>
+                                <a href="/modifyMember/<%= user._id %>">
+                                    Promote to Admin
+                                </a>
+                            <% } %>
+                        </td>
+                    </tr>
+                <% } %>
+            </tbody>
+        </table>
+    </body>
+
+    <script src="script.js"></script>
+</html>
