@@ -5,7 +5,7 @@
         <h1><%= statusCode %></h1>
         <h2><%= heading %></h2>
 
-        <% if (typeof messages !== "undefined" && messages.length > 0) { %>
+        <% if (messages && messages.length > 0) { %>
             <ul class="list-group my-3 text-start">
                 <% for (const message of messages) { %>
                     <li class="list-group-item"><%= message %></li>
