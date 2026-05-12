@@ -109,7 +109,7 @@ app.use(express.static(path.join(__dirname, "public"), {
 }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.set('view engine', 'ejs')
+app.set("view engine", "ejs");
 
 // Session setup
 app.use(session({
@@ -176,15 +176,17 @@ app.post("/signupSubmit", async (req, res) => {
     });
 
     if (error) {
-        const errorMessages = error.details
-            .map(detail => `<li>${detail.message}</li>`)
-            .join("");
+        const errorMessages = error.details.map(detail => detail.message);
 
-        return res.status(400).send(`
-            <p>Signup failed:</p>
-            <ul>${errorMessages}</ul>
-            <p>Please <a href="/signup">try again.</a></p>
-        `);
+        return res.status(400).render("error", {
+            title: "Signup Failed",
+            statusCode: 400,
+            heading: "Signup failed",
+            messages: errorMessages,
+            message: null,
+            returnUrl: "/signup",
+            returnText: "Try again"
+        });
     }
 
     const { name, email, password } = value;
@@ -193,10 +195,15 @@ app.post("/signupSubmit", async (req, res) => {
         const existingUser = await userCollection.findOne({ email: email });
 
         if (existingUser) {
-            return res.status(400).send(`
-                <p>An account with this email already exists.</p>
-                <p>Please <a href="/signup">try again.</a></p>
-            `);
+            return res.status(400).render("error", {
+                title: "Signup Failed",
+                statusCode: 400,
+                heading: "Signup failed",
+                message: "An account with this email already exists.",
+                messages: null,
+                returnUrl: "/signup",
+                returnText: "Try again"
+            });
         }
 
         const hashedPassword = await hashPassword(password);
@@ -205,21 +212,27 @@ app.post("/signupSubmit", async (req, res) => {
             name: name,
             email: email,
             password: hashedPassword,
-            user_type: 'user',
+            user_type: "user",
         });
 
         req.session.authenticated = true;
         req.session.name = name;
         req.session.email = email;
+        req.session.user_type = "user";
 
         res.redirect("/members");
     } catch (err) {
         console.error("Signup error:", err);
 
-        res.status(500).send(`
-            <p>Something went wrong while creating your account.</p>
-            <p>Please <a href="/signup">try again.</a></p>
-        `);
+        return res.status(500).render("error", {
+            title: "Server Error",
+            statusCode: 500,
+            heading: "Something went wrong",
+            message: "Something went wrong while creating your account.",
+            messages: null,
+            returnUrl: "/signup",
+            returnText: "Try again"
+        });
     }
 });
 
@@ -234,15 +247,17 @@ app.post("/loginSubmit", async (req, res) => {
     });
 
     if (error) {
-        const errorMessages = error.details
-            .map(detail => `<li>${detail.message}</li>`)
-            .join("");
+        const errorMessages = error.details.map(detail => detail.message);
 
-        return res.status(400).send(`
-            <p>Login failed:</p>
-            <ul>${errorMessages}</ul>
-            <p>Please <a href="/login">try again.</a></p>
-        `);
+        return res.status(400).render("error", {
+            title: "Login Failed",
+            statusCode: 400,
+            heading: "Login failed",
+            messages: errorMessages,
+            message: null,
+            returnUrl: "/login",
+            returnText: "Try again"
+        });
     }
 
     const { email, password } = value;
@@ -251,30 +266,49 @@ app.post("/loginSubmit", async (req, res) => {
         const existingUser = await userCollection.findOne({ email: email });
 
         if (!existingUser) {
-            return res.status(400).send(`
-                <p>Invalid email or password.</p>
-                <p>Please <a href="/login">try again.</a></p>
-            `);
+            return res.status(400).render("error", {
+                title: "Login Failed",
+                statusCode: 400,
+                heading: "Login failed",
+                message: "Invalid email or password.",
+                messages: null,
+                returnUrl: "/login",
+                returnText: "Try again"
+            });
         }
 
         const passwordMatches = await bcrypt.compare(password, existingUser.password);
 
         if (!passwordMatches) {
-            return res.status(400).send(`
-                <p>Invalid email or password.</p>
-                <p>Please <a href="/login">try again.</a></p>
-            `);
+            return res.status(400).render("error", {
+                title: "Login Failed",
+                statusCode: 400,
+                heading: "Login failed",
+                message: "Invalid email or password.",
+                messages: null,
+                returnUrl: "/login",
+                returnText: "Try again"
+            });
         }
 
         req.session.authenticated = true;
         req.session.name = existingUser.name;
         req.session.email = existingUser.email;
-        req.session.user_type = existingUser.user_type || 'user';
+        req.session.user_type = existingUser.user_type || "user";
 
         req.session.save((err) => {
             if (err) {
                 console.error("Session save error:", err);
-                return res.status(500).send("Could not save session.");
+
+                return res.status(500).render("error", {
+                    title: "Session Error",
+                    statusCode: 500,
+                    heading: "Could not save session",
+                    message: "Something went wrong while saving your login session.",
+                    messages: null,
+                    returnUrl: "/login",
+                    returnText: "Return to login"
+                });
             }
 
             res.redirect("/members");
@@ -282,10 +316,15 @@ app.post("/loginSubmit", async (req, res) => {
     } catch (err) {
         console.error("Login error:", err);
 
-        res.status(500).send(`
-            <p>Something went wrong while logging in to your account.</p>
-            <p>Please <a href="/login">try again.</a></p>
-        `);
+        return res.status(500).render("error", {
+            title: "Server Error",
+            statusCode: 500,
+            heading: "Something went wrong",
+            message: "Something went wrong while logging in to your account.",
+            messages: null,
+            returnUrl: "/login",
+            returnText: "Try again"
+        });
     }
 });
 
@@ -308,15 +347,19 @@ app.get("/members", (req, res) => {
 
 app.get("/admin", async (req, res) => {
     if (!req.session.authenticated) {
-        return res.redirect("/");
+        return res.redirect("/login");
     }
 
-    if (req.session.user_type !== 'admin') {
-        return res.status(403).send(`
-            <h1>403</h1>
-            <p>You do not have permission to access this page.</p>
-            <p><a href="/">Return home</a></p>
-        `);
+    if (req.session.user_type !== "admin") {
+        return res.status(403).render("error", {
+            title: "403",
+            statusCode: 403,
+            heading: "Not authorized",
+            message: "You do not have permission to access this page.",
+            messages: null,
+            returnUrl: "/",
+            returnText: "Return home"
+        });
     }
 
     const users = await userCollection.find().toArray();
@@ -324,30 +367,38 @@ app.get("/admin", async (req, res) => {
     res.render("admin", {
         title: "Admin",
         users: users
-    })
+    });
 });
 
 app.get("/modifyMember/:userid", async (req, res) => {
     if (!req.session.authenticated) {
-        return res.redirect("/");
+        return res.redirect("/login");
     }
 
-    if (req.session.user_type !== 'admin') {
-        return res.status(403).send(`
-            <h1>403</h1>
-            <p>You do not have permission to access this page.</p>
-            <p><a href="/">Return home</a></p>
-        `);
+    if (req.session.user_type !== "admin") {
+        return res.status(403).render("error", {
+            title: "403",
+            statusCode: 403,
+            heading: "Not authorized",
+            message: "You do not have permission to access this page.",
+            messages: null,
+            returnUrl: "/",
+            returnText: "Return home"
+        });
     }
 
     const id = req.params.userid;
 
     if (!ObjectId.isValid(id)) {
-        return res.status(400).send(`
-            <h1>400</h1>
-            <p>Invalid user ID.</p>
-            <p><a href="/admin">Return</a></p>
-        `);
+        return res.status(400).render("error", {
+            title: "Invalid User ID",
+            statusCode: 400,
+            heading: "Invalid user ID",
+            message: "The provided user ID is not valid.",
+            messages: null,
+            returnUrl: "/admin",
+            returnText: "Return to admin"
+        });
     }
 
     const targetUser = await userCollection.findOne({
@@ -355,19 +406,27 @@ app.get("/modifyMember/:userid", async (req, res) => {
     });
 
     if (!targetUser) {
-        return res.status(404).send(`
-            <h1>404</h1>
-            <p>No user by this ID.</p>
-            <p><a href="/admin">Return</a></p>
-        `);
+        return res.status(404).render("error", {
+            title: "User Not Found",
+            statusCode: 404,
+            heading: "User not found",
+            message: "No user exists with this ID.",
+            messages: null,
+            returnUrl: "/admin",
+            returnText: "Return to admin"
+        });
     }
 
     if (req.session.email === targetUser.email) {
-        return res.status(403).send(`
-            <h1>403</h1>
-            <p>You cannot action yourself.</p>
-            <p><a href="/admin">Return</a></p>
-        `);
+        return res.status(403).render("error", {
+            title: "403",
+            statusCode: 403,
+            heading: "Action not allowed",
+            message: "You cannot promote or demote yourself.",
+            messages: null,
+            returnUrl: "/admin",
+            returnText: "Return to admin"
+        });
     }
 
     const currentType = targetUser.user_type || "user";
@@ -385,7 +444,16 @@ app.get("/logout", (req, res) => {
     req.session.destroy((err) => {
         if (err) {
             console.error("Logout error:", err);
-            return res.status(500).send("Could not log out.");
+
+            return res.status(500).render("error", {
+                title: "Logout Error",
+                statusCode: 500,
+                heading: "Could not log out",
+                message: "Something went wrong while ending your session.",
+                messages: null,
+                returnUrl: "/",
+                returnText: "Return home"
+            });
         }
 
         res.redirect("/");
@@ -393,8 +461,14 @@ app.get("/logout", (req, res) => {
 });
 
 app.use((req, res) => {
-    res.status(404).render("404", {
-        title: "404"
+    return res.status(404).render("error", {
+        title: "404",
+        statusCode: 404,
+        heading: "Page not found",
+        message: "The page you are looking for does not exist.",
+        messages: null,
+        returnUrl: "/",
+        returnText: "Return home"
     });
 });
 

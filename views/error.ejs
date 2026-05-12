@@ -1,0 +1,24 @@
+<%- include("templates/header") %>
+
+<div class="d-flex justify-content-center">
+    <div class="text-center">
+        <h1><%= statusCode %></h1>
+        <h2><%= heading %></h2>
+
+        <% if (typeof messages !== "undefined" && messages.length > 0) { %>
+            <ul class="list-group my-3 text-start">
+                <% for (const message of messages) { %>
+                    <li class="list-group-item"><%= message %></li>
+                <% } %>
+            </ul>
+        <% } else { %>
+            <p><%= message %></p>
+        <% } %>
+
+        <a href="<%= returnUrl %>" class="btn btn-primary">
+            <%= returnText %>
+        </a>
+    </div>
+</div>
+
+<%- include("templates/footer") %>
